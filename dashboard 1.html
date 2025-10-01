@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro Innovation Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .table-input {
+            width: 100%;
+            background-color: #f0f4f8;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .table-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+         .loading-text {
+            font-size: 1.5rem; /* Larger than metric titles */
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Micro Innovation Dashboard</h1>
+            <p class="text-md text-gray-600 mt-2">Track and manage your team's innovative projects and their impact.</p>
+        </header>
+
+        <!-- Key Metrics -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
+                <h2 class="text-lg font-semibold text-gray-500">Total Projects</h2>
+                <p id="total-projects" class="text-3xl font-bold text-blue-600 loading-text">...</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
+                <h2 class="text-lg font-semibold text-gray-500">Total Hours Saved</h2>
+                <p id="total-hours-saved" class="text-3xl font-bold text-green-600 loading-text">...</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
+                <h2 class="text-lg font-semibold text-gray-500">Avg. Efficiency Gain</h2>
+                <p id="avg-efficiency" class="text-3xl font-bold text-indigo-600 loading-text">...</p>
+            </div>
+             <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
+                <h2 class="text-lg font-semibold text-gray-500">Most Used Method</h2>
+                <p id="most-used-method" class="text-xl font-bold text-purple-600 loading-text">...</p>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Data Table -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                 <h2 class="text-2xl font-bold mb-4">Innovation Pipeline</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left" id="innovation-table">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                                <th class="py-3 px-6">Task Name</th>
+                                <th class="py-3 px-6">Method</th>
+                                <th class="py-3 px-6 text-center">Hours Before</th>
+                                <th class="py-3 px-6 text-center">Hours After</th>
+                                <th class="py-3 px-6 text-center">Efficiency Gain</th>
+                                <th class="py-3 px-6 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 text-sm font-light">
+                           <tr><td colspan="6" class="text-center p-4">Connecting to database...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add Item Form -->
+            <div id="add-item-container" class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-4">Add New Innovation</h2>
+                <form id="add-item-form">
+                    <div class="mb-4">
+                        <label for="taskName" class="block text-sm font-medium text-gray-700">Task Name</label>
+                        <input type="text" id="taskName" name="taskName" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="innovationMethod" class="block text-sm font-medium text-gray-700">Innovation Method</label>
+                        <input type="text" id="innovationMethod" name="innovationMethod" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="hoursBefore" class="block text-sm font-medium text-gray-700">Operation Hours Before</label>
+                        <input type="number" id="hoursBefore" name="hoursBefore" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="hoursAfter" class="block text-sm font-medium text-gray-700">Operation Hours After</label>
+                        <input type="number" id="hoursAfter" name="hoursAfter" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Add Item
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+             <h2 class="text-2xl font-bold mb-4">Impact Visualization</h2>
+             <div class="relative h-96">
+                <canvas id="efficiencyChart"></canvas>
+             </div>
+        </div>
+
+    </div>
+
+    <!-- Modal for notifications -->
+    <div id="notification-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 id="modal-title" class="text-lg leading-6 font-medium text-gray-900">Notification</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p id="modal-message" class="text-sm text-gray-500"></p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="close-modal-btn" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp as initializeFirebaseApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- Firebase Configuration ---
+        const YOUR_FIREBASE_CONFIG = {
+          apiKey: "AIzaSyBXXSd3BpMDdllqG07R2OVnRTiqvrm79Tc",
+          authDomain: "micro-innovation-dashboard.firebaseapp.com",
+          projectId: "micro-innovation-dashboard",
+          storageBucket: "micro-innovation-dashboard.appspot.com",
+          messagingSenderId: "344370578673",
+          appId: "1:344370578673:web:9722b7fc16ac5a3acb1550"
+        };
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : YOUR_FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // --- DOM Elements ---
+        const form = document.getElementById('add-item-form');
+        const tableBody = document.querySelector('#innovation-table tbody');
+        const modal = document.getElementById('notification-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // --- App State ---
+        let db; // Firestore instance
+        let efficiencyChart;
+        let innovationData = []; 
+        let unsubscribe; // To store the Firestore listener
+
+        // --- Main App Logic ---
+        function startApp() {
+            renderChart(); 
+
+            if (!firebaseConfig) {
+                const errorMessage = "This dashboard is not connected to a database. Please add your Firebase project configuration to the 'YOUR_FIREBASE_CONFIG' variable in the script section of this file to enable live data.";
+                showError("Configuration Needed", errorMessage);
+                
+                const formToDisable = document.getElementById('add-item-form');
+                const formButton = formToDisable.querySelector('button');
+                formToDisable.querySelectorAll('input').forEach(input => input.disabled = true);
+                formButton.disabled = true;
+                formButton.classList.add('opacity-50', 'cursor-not-allowed');
+                return; // Stop execution
+            }
+
+            const app = initializeFirebaseApp(firebaseConfig);
+            const auth = getAuth(app);
+            db = getFirestore(app); 
+
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    if (unsubscribe) unsubscribe(); 
+                    
+                    const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
+                    unsubscribe = onSnapshot(dataCollection, (snapshot) => {
+                        innovationData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderTable(innovationData);
+                        updateDashboard(false); 
+                        updateChart();
+                    }, (error) => {
+                        console.error("Firestore listener error: ", error);
+                        showError("Data Error", "Failed to retrieve live data. Please check your connection or permissions.");
+                    });
+                } else {
+                     if (unsubscribe) unsubscribe();
+                     updateDashboard(true); 
+                }
+            });
+
+            // Attempt to sign in
+            (async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (e) {
+                     console.error("Authentication failed:", e);
+                     showError("Authentication Failed", "Could not sign in to the database service. Please try reloading the page.");
+                }
+            })();
+        }
+
+        document.addEventListener('DOMContentLoaded', startApp);
+
+        // --- UI Rendering ---
+        function renderTable(data) {
+            if (data.length === 0) {
+                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">No innovations added yet.</td></tr>`;
+                 return;
+            }
+            tableBody.innerHTML = ''; 
+            data.forEach(item => {
+                const efficiency = item.hoursBefore > 0 ? Math.round(((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100) : 0;
+                const rowHtml = `
+                    <tr class="border-b border-gray-200 hover:bg-gray-100" data-id="${item.id}">
+                        <td class="py-3 px-6">${item.taskName}</td>
+                        <td class="py-3 px-6">${item.method}</td>
+                        <td class="py-3 px-6 text-center">${item.hoursBefore}</td>
+                        <td class="py-3 px-6 text-center">${item.hoursAfter}</td>
+                        <td class="py-3 px-6 text-center text-green-600 font-semibold">${efficiency}%</td>
+                        <td class="py-3 px-6 text-center">
+                            <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
+                            <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', rowHtml);
+            });
+        }
+
+        // --- Form Submission ---
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!db) {
+                showError("Database Error", "Not connected to the database.");
+                return;
+            }
+            const taskName = e.target.taskName.value.trim();
+            const innovationMethod = e.target.innovationMethod.value.trim();
+            const hoursBefore = parseFloat(e.target.hoursBefore.value);
+            const hoursAfter = parseFloat(e.target.hoursAfter.value);
+
+            if (taskName === '' || innovationMethod === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
+                 showMessage('Invalid Input','Please fill in all fields with valid numbers.');
+                 return;
+            }
+             if (hoursAfter >= hoursBefore) {
+                showMessage('Invalid Input','Hours after must be less than hours before.');
+                return;
+            }
+            
+            try {
+                const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
+                await addDoc(dataCollection, { taskName, method: innovationMethod, hoursBefore, hoursAfter });
+                showMessage("Success!","New innovation added successfully!");
+                form.reset();
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showError("Save Error", "Failed to add item. Please try again.");
+            }
+        });
+        
+        // --- Data Manipulation Functions ---
+        async function deleteRow(button) {
+            const row = button.closest('tr');
+            const docId = row.dataset.id;
+            try {
+                const docRef = doc(db, `/artifacts/${appId}/public/data/innovations`, docId);
+                await deleteDoc(docRef);
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+                showError("Delete Error","Failed to delete item. Please try again.");
+            }
+        }
+
+        function editRow(button) {
+            const row = button.closest('tr');
+            const cells = row.querySelectorAll('td');
+
+            row.dataset.originalTaskName = cells[0].innerText;
+            row.dataset.originalMethod = cells[1].innerText;
+            row.dataset.originalHoursBefore = cells[2].innerText;
+            row.dataset.originalHoursAfter = cells[3].innerText;
+
+            cells[0].innerHTML = `<input type="text" value="${cells[0].innerText}" class="table-input">`;
+            cells[1].innerHTML = `<input type="text" value="${cells[1].innerText}" class="table-input">`;
+            cells[2].innerHTML = `<input type="number" step="0.1" value="${cells[2].innerText}" class="table-input text-center">`;
+            cells[3].innerHTML = `<input type="number" step="0.1" value="${cells[3].innerText}" class="table-input text-center">`;
+
+            cells[5].innerHTML = `
+                <button class="text-green-600 hover:text-green-900 mr-2" onclick="window.app.saveRow(this)">Save</button>
+                <button class="text-gray-600 hover:text-gray-900" onclick="window.app.cancelEdit(this)">Cancel</button>
+            `;
+        }
+
+        async function saveRow(button) {
+            const row = button.closest('tr');
+            const docId = row.dataset.id;
+            const inputs = row.querySelectorAll('input');
+
+            const taskName = inputs[0].value.trim();
+            const method = inputs[1].value.trim();
+            const hoursBefore = parseFloat(inputs[2].value);
+            const hoursAfter = parseFloat(inputs[3].value);
+
+            if (taskName === '' || method === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
+                 showMessage('Invalid Input','Please fill in all fields with valid numbers.');
+                 return;
+            }
+            if (hoursAfter >= hoursBefore) {
+                showMessage('Invalid Input','Hours after must be less than hours before.');
+                return;
+            }
+
+            try {
+                const docRef = doc(db, `/artifacts/${appId}/public/data/innovations`, docId);
+                await updateDoc(docRef, { taskName, method, hoursBefore, hoursAfter });
+            } catch (error) {
+                console.error("Error updating document: ", error);
+                showError("Update Error","Failed to save changes. Please try again.");
+                cancelEdit(button); // Revert UI on failure
+            }
+        }
+
+        function cancelEdit(button) {
+            const row = button.closest('tr');
+            const cells = row.querySelectorAll('td');
+
+            const originalHoursBefore = parseFloat(row.dataset.originalHoursBefore);
+            const originalHoursAfter = parseFloat(row.dataset.originalHoursAfter);
+            const efficiency = originalHoursBefore > 0 ? Math.round(((originalHoursBefore - originalHoursAfter) / originalHoursBefore) * 100) : 0;
+            
+            cells[0].innerText = row.dataset.originalTaskName;
+            cells[1].innerText = row.dataset.originalMethod;
+            cells[2].innerText = row.dataset.originalHoursBefore;
+            cells[3].innerText = row.dataset.originalHoursAfter;
+            cells[4].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
+
+            cells[5].innerHTML = `
+                <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
+                <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
+            `;
+        }
+
+        // --- Dashboard & Chart Updates ---
+        function updateDashboard(isLoading = true) {
+            const pProjects = document.getElementById('total-projects');
+            const pHours = document.getElementById('total-hours-saved');
+            const pEfficiency = document.getElementById('avg-efficiency');
+            const pMethod = document.getElementById('most-used-method');
+
+            if (isLoading) {
+                pProjects.innerHTML = `<span class="loading-text">...</span>`;
+                pHours.innerHTML = `<span class="loading-text">...</span>`;
+                pEfficiency.innerHTML = `<span class="loading-text">...</span>`;
+                pMethod.innerHTML = `<span class="loading-text">...</span>`;
+                return;
+            }
+
+            pProjects.classList.remove('loading-text');
+            pHours.classList.remove('loading-text');
+            pEfficiency.classList.remove('loading-text');
+            pMethod.classList.remove('loading-text');
+            
+            const data = innovationData;
+            const totalProjects = data.length;
+            const totalHoursSaved = data.reduce((acc, item) => acc + (item.hoursBefore - item.hoursAfter), 0);
+            const totalEfficiencySum = data.reduce((acc, item) => {
+                if (item.hoursBefore > 0) {
+                    const efficiency = ((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100;
+                    return acc + efficiency;
+                }
+                return acc;
+            }, 0);
+            const avgEfficiency = totalProjects > 0 ? Math.round(totalEfficiencySum / totalProjects) : 0;
+            const mostUsedMethod = getMostUsedMethod(data);
+
+            pProjects.innerText = totalProjects;
+            pHours.innerText = totalHoursSaved.toFixed(1);
+            pEfficiency.innerText = `${avgEfficiency}%`;
+            pMethod.innerText = mostUsedMethod || 'N/A';
+        }
+
+        function getMostUsedMethod(data) {
+            if (data.length === 0) return 'N/A';
+            const methodCounts = data.reduce((acc, item) => {
+                acc[item.method] = (acc[item.method] || 0) + 1;
+                return acc;
+            }, {});
+            if (Object.keys(methodCounts).length === 0) return 'N/A';
+            return Object.keys(methodCounts).reduce((a, b) => methodCounts[a] > methodCounts[b] ? a : b);
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('efficiencyChart').getContext('2d');
+            efficiencyChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{
+                    label: 'Efficiency Gain (%)',
+                    data: [],
+                    backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    borderWidth: 1 }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true, max: 100 }},
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        function updateChart() {
+             const data = innovationData;
+             if (!efficiencyChart) return;
+             efficiencyChart.data.labels = data.map(item => item.taskName);
+             efficiencyChart.data.datasets[0].data = data.map(item => {
+                if (item.hoursBefore > 0) {
+                    return Math.round(((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100)
+                }
+                return 0;
+             });
+             efficiencyChart.update();
+        }
+
+        // --- Utilities ---
+        function showMessage(title, message) {
+            modalTitle.innerText = title;
+            modalMessage.innerText = message;
+            modal.classList.remove('hidden');
+        }
+
+        function showError(title, message) {
+            showMessage(title, message);
+            updateDashboard(true); // Reset metrics on error
+            tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
+        }
+
+        closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        
+        // --- Expose functions to global scope for onclick handlers ---
+        window.app = { deleteRow, editRow, saveRow, cancelEdit };
+
+    </script>
+</body>
+</html>
