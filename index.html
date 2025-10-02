@@ -129,11 +129,19 @@
         </div>
 
         <!-- Charts -->
-        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
-             <h2 class="text-2xl font-bold mb-4">Impact Visualization</h2>
-             <div class="relative h-96">
-                <canvas id="efficiencyChart"></canvas>
-             </div>
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                 <h2 class="text-2xl font-bold mb-4">Efficiency Gain by Task</h2>
+                 <div class="relative h-96">
+                    <canvas id="taskEfficiencyChart"></canvas>
+                 </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                 <h2 class="text-2xl font-bold mb-4">Average Efficiency by Team</h2>
+                 <div class="relative h-96">
+                    <canvas id="teamEfficiencyChart"></canvas>
+                 </div>
+            </div>
         </div>
 
     </div>
@@ -187,13 +195,15 @@
 
         // --- App State ---
         let db; // Firestore instance
-        let efficiencyChart;
+        let taskEfficiencyChart;
+        let teamEfficiencyChart;
         let allInnovationData = []; 
         let unsubscribe; // To store the Firestore listener
 
         // --- Main App Logic ---
         function startApp() {
-            renderChart(); 
+            renderTaskChart(); 
+            renderTeamChart();
 
             if (!firebaseConfig) {
                 const errorMessage = "This dashboard is not connected to a database. Please add your Firebase project configuration to the 'YOUR_FIREBASE_CONFIG' variable in the script section of this file to enable live data.";
@@ -286,7 +296,8 @@
             
             renderTable(filteredData);
             updateDashboard(filteredData);
-            updateChart(filteredData);
+            updateTaskChart(filteredData);
+            updateTeamChart(filteredData);
         }
 
         // --- UI Rendering ---
@@ -483,9 +494,9 @@
             return Object.keys(methodCounts).reduce((a, b) => methodCounts[a] > methodCounts[b] ? a : b);
         }
 
-        function renderChart() {
-            const ctx = document.getElementById('efficiencyChart').getContext('2d');
-            efficiencyChart = new Chart(ctx, {
+        function renderTaskChart() {
+            const ctx = document.getElementById('taskEfficiencyChart').getContext('2d');
+            taskEfficiencyChart = new Chart(ctx, {
                 type: 'bar',
                 data: { labels: [], datasets: [{
                     label: 'Efficiency Gain (%)',
@@ -501,17 +512,62 @@
                 }
             });
         }
+
+        function renderTeamChart() {
+            const ctx = document.getElementById('teamEfficiencyChart').getContext('2d');
+            teamEfficiencyChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{
+                    label: 'Average Efficiency Gain (%)',
+                    data: [],
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    borderWidth: 1 }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true, max: 100 }},
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
         
-        function updateChart(data) {
-             if (!efficiencyChart) return;
-             efficiencyChart.data.labels = data.map(item => item.taskName);
-             efficiencyChart.data.datasets[0].data = data.map(item => {
+        function updateTaskChart(data) {
+             if (!taskEfficiencyChart) return;
+             taskEfficiencyChart.data.labels = data.map(item => item.taskName);
+             taskEfficiencyChart.data.datasets[0].data = data.map(item => {
                 if (item.hoursBefore > 0) {
                     return Math.round(((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100)
                 }
                 return 0;
              });
-             efficiencyChart.update();
+             taskEfficiencyChart.update();
+        }
+
+        function updateTeamChart(data) {
+            if (!teamEfficiencyChart) return;
+
+            const teamData = {};
+            data.forEach(item => {
+                if (item.hoursBefore > 0) {
+                    if (!teamData[item.team]) {
+                        teamData[item.team] = { totalGain: 0, count: 0 };
+                    }
+                    const efficiency = ((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100;
+                    teamData[item.team].totalGain += efficiency;
+                    teamData[item.team].count++;
+                }
+            });
+
+            const labels = Object.keys(teamData).sort();
+            const chartData = labels.map(team => {
+                const avg = teamData[team].totalGain / teamData[team].count;
+                return Math.round(avg);
+            });
+
+            teamEfficiencyChart.data.labels = labels;
+            teamEfficiencyChart.data.datasets[0].data = chartData;
+            teamEfficiencyChart.update();
         }
 
         // --- Utilities ---
