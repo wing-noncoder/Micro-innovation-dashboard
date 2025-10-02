@@ -60,12 +60,29 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Data Table -->
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                 <h2 class="text-2xl font-bold mb-4">Innovation Pipeline</h2>
+                 <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Innovation Pipeline</h2>
+                    <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                        <div>
+                            <label for="team-filter" class="text-sm font-medium">Team:</label>
+                            <select id="team-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option>All</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="method-filter" class="text-sm font-medium">Method:</label>
+                            <select id="method-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option>All</option>
+                            </select>
+                        </div>
+                    </div>
+                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left" id="innovation-table">
                         <thead>
                             <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
                                 <th class="py-3 px-6">Task Name</th>
+                                <th class="py-3 px-6">Team</th>
                                 <th class="py-3 px-6">Method</th>
                                 <th class="py-3 px-6 text-center">Hours Before</th>
                                 <th class="py-3 px-6 text-center">Hours After</th>
@@ -74,7 +91,7 @@
                             </tr>
                         </thead>
                         <tbody class="text-gray-600 text-sm font-light">
-                           <tr><td colspan="6" class="text-center p-4">Connecting to database...</td></tr>
+                           <tr><td colspan="7" class="text-center p-4">Connecting to database...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -87,6 +104,10 @@
                     <div class="mb-4">
                         <label for="taskName" class="block text-sm font-medium text-gray-700">Task Name</label>
                         <input type="text" id="taskName" name="taskName" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                     <div class="mb-4">
+                        <label for="team" class="block text-sm font-medium text-gray-700">Team</label>
+                        <input type="text" id="team" name="team" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                     </div>
                     <div class="mb-4">
                         <label for="innovationMethod" class="block text-sm font-medium text-gray-700">Innovation Method</label>
@@ -160,11 +181,14 @@
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
         const closeModalBtn = document.getElementById('close-modal-btn');
+        const teamFilter = document.getElementById('team-filter');
+        const methodFilter = document.getElementById('method-filter');
+
 
         // --- App State ---
         let db; // Firestore instance
         let efficiencyChart;
-        let innovationData = []; 
+        let allInnovationData = []; 
         let unsubscribe; // To store the Firestore listener
 
         // --- Main App Logic ---
@@ -193,17 +217,16 @@
                     
                     const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
                     unsubscribe = onSnapshot(dataCollection, (snapshot) => {
-                        innovationData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderTable(innovationData);
-                        updateDashboard(false); 
-                        updateChart();
+                        allInnovationData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        populateFilters(allInnovationData);
+                        applyFilters();
                     }, (error) => {
                         console.error("Firestore listener error: ", error);
                         showError("Data Error", "Failed to retrieve live data. Please check your connection or permissions.");
                     });
                 } else {
                      if (unsubscribe) unsubscribe();
-                     updateDashboard(true); 
+                     updateDashboard([], true); 
                 }
             });
 
@@ -224,10 +247,52 @@
 
         document.addEventListener('DOMContentLoaded', startApp);
 
+        // --- Filtering Logic ---
+        teamFilter.addEventListener('change', applyFilters);
+        methodFilter.addEventListener('change', applyFilters);
+
+        function populateFilters(data) {
+            const teams = [...new Set(data.map(item => item.team))];
+            const methods = [...new Set(data.map(item => item.method))];
+            
+            const currentTeam = teamFilter.value;
+            teamFilter.innerHTML = '<option>All</option>';
+            teams.sort().forEach(team => {
+                teamFilter.innerHTML += `<option value="${team}">${team}</option>`;
+            });
+            teamFilter.value = teams.includes(currentTeam) ? currentTeam : 'All';
+
+
+            const currentMethod = methodFilter.value;
+            methodFilter.innerHTML = '<option>All</option>';
+            methods.sort().forEach(method => {
+                methodFilter.innerHTML += `<option value="${method}">${method}</option>`;
+            });
+            methodFilter.value = methods.includes(currentMethod) ? currentMethod : 'All';
+        }
+
+        function applyFilters() {
+            const selectedTeam = teamFilter.value;
+            const selectedMethod = methodFilter.value;
+
+            let filteredData = allInnovationData;
+
+            if (selectedTeam !== 'All') {
+                filteredData = filteredData.filter(item => item.team === selectedTeam);
+            }
+            if (selectedMethod !== 'All') {
+                filteredData = filteredData.filter(item => item.method === selectedMethod);
+            }
+            
+            renderTable(filteredData);
+            updateDashboard(filteredData);
+            updateChart(filteredData);
+        }
+
         // --- UI Rendering ---
         function renderTable(data) {
             if (data.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">No innovations added yet.</td></tr>`;
+                 tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-4">No innovations match the current filters.</td></tr>`;
                  return;
             }
             tableBody.innerHTML = ''; 
@@ -236,6 +301,7 @@
                 const rowHtml = `
                     <tr class="border-b border-gray-200 hover:bg-gray-100" data-id="${item.id}">
                         <td class="py-3 px-6">${item.taskName}</td>
+                        <td class="py-3 px-6">${item.team}</td>
                         <td class="py-3 px-6">${item.method}</td>
                         <td class="py-3 px-6 text-center">${item.hoursBefore}</td>
                         <td class="py-3 px-6 text-center">${item.hoursAfter}</td>
@@ -258,11 +324,12 @@
                 return;
             }
             const taskName = e.target.taskName.value.trim();
+            const team = e.target.team.value.trim();
             const innovationMethod = e.target.innovationMethod.value.trim();
             const hoursBefore = parseFloat(e.target.hoursBefore.value);
             const hoursAfter = parseFloat(e.target.hoursAfter.value);
 
-            if (taskName === '' || innovationMethod === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
+            if (taskName === '' || team === '' || innovationMethod === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
                  showMessage('Invalid Input','Please fill in all fields with valid numbers.');
                  return;
             }
@@ -273,7 +340,7 @@
             
             try {
                 const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
-                await addDoc(dataCollection, { taskName, method: innovationMethod, hoursBefore, hoursAfter });
+                await addDoc(dataCollection, { taskName, team, method: innovationMethod, hoursBefore, hoursAfter });
                 showMessage("Success!","New innovation added successfully!");
                 form.reset();
             } catch (error) {
@@ -300,16 +367,18 @@
             const cells = row.querySelectorAll('td');
 
             row.dataset.originalTaskName = cells[0].innerText;
-            row.dataset.originalMethod = cells[1].innerText;
-            row.dataset.originalHoursBefore = cells[2].innerText;
-            row.dataset.originalHoursAfter = cells[3].innerText;
+            row.dataset.originalTeam = cells[1].innerText;
+            row.dataset.originalMethod = cells[2].innerText;
+            row.dataset.originalHoursBefore = cells[3].innerText;
+            row.dataset.originalHoursAfter = cells[4].innerText;
 
             cells[0].innerHTML = `<input type="text" value="${cells[0].innerText}" class="table-input">`;
             cells[1].innerHTML = `<input type="text" value="${cells[1].innerText}" class="table-input">`;
-            cells[2].innerHTML = `<input type="number" step="0.1" value="${cells[2].innerText}" class="table-input text-center">`;
+            cells[2].innerHTML = `<input type="text" value="${cells[2].innerText}" class="table-input">`;
             cells[3].innerHTML = `<input type="number" step="0.1" value="${cells[3].innerText}" class="table-input text-center">`;
+            cells[4].innerHTML = `<input type="number" step="0.1" value="${cells[4].innerText}" class="table-input text-center">`;
 
-            cells[5].innerHTML = `
+            cells[6].innerHTML = `
                 <button class="text-green-600 hover:text-green-900 mr-2" onclick="window.app.saveRow(this)">Save</button>
                 <button class="text-gray-600 hover:text-gray-900" onclick="window.app.cancelEdit(this)">Cancel</button>
             `;
@@ -321,11 +390,12 @@
             const inputs = row.querySelectorAll('input');
 
             const taskName = inputs[0].value.trim();
-            const method = inputs[1].value.trim();
-            const hoursBefore = parseFloat(inputs[2].value);
-            const hoursAfter = parseFloat(inputs[3].value);
+            const team = inputs[1].value.trim();
+            const method = inputs[2].value.trim();
+            const hoursBefore = parseFloat(inputs[3].value);
+            const hoursAfter = parseFloat(inputs[4].value);
 
-            if (taskName === '' || method === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
+            if (taskName === '' || team === '' || method === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
                  showMessage('Invalid Input','Please fill in all fields with valid numbers.');
                  return;
             }
@@ -336,7 +406,7 @@
 
             try {
                 const docRef = doc(db, `/artifacts/${appId}/public/data/innovations`, docId);
-                await updateDoc(docRef, { taskName, method, hoursBefore, hoursAfter });
+                await updateDoc(docRef, { taskName, team, method, hoursBefore, hoursAfter });
             } catch (error) {
                 console.error("Error updating document: ", error);
                 showError("Update Error","Failed to save changes. Please try again.");
@@ -353,19 +423,20 @@
             const efficiency = originalHoursBefore > 0 ? Math.round(((originalHoursBefore - originalHoursAfter) / originalHoursBefore) * 100) : 0;
             
             cells[0].innerText = row.dataset.originalTaskName;
-            cells[1].innerText = row.dataset.originalMethod;
-            cells[2].innerText = row.dataset.originalHoursBefore;
-            cells[3].innerText = row.dataset.originalHoursAfter;
-            cells[4].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
+            cells[1].innerText = row.dataset.originalTeam;
+            cells[2].innerText = row.dataset.originalMethod;
+            cells[3].innerText = row.dataset.originalHoursBefore;
+            cells[4].innerText = row.dataset.originalHoursAfter;
+            cells[5].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
 
-            cells[5].innerHTML = `
+            cells[6].innerHTML = `
                 <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
                 <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
             `;
         }
 
         // --- Dashboard & Chart Updates ---
-        function updateDashboard(isLoading = true) {
+        function updateDashboard(data, isLoading = false) {
             const pProjects = document.getElementById('total-projects');
             const pHours = document.getElementById('total-hours-saved');
             const pEfficiency = document.getElementById('avg-efficiency');
@@ -384,7 +455,6 @@
             pEfficiency.classList.remove('loading-text');
             pMethod.classList.remove('loading-text');
             
-            const data = innovationData;
             const totalProjects = data.length;
             const totalHoursSaved = data.reduce((acc, item) => acc + (item.hoursBefore - item.hoursAfter), 0);
             const totalEfficiencySum = data.reduce((acc, item) => {
@@ -432,8 +502,7 @@
             });
         }
         
-        function updateChart() {
-             const data = innovationData;
+        function updateChart(data) {
              if (!efficiencyChart) return;
              efficiencyChart.data.labels = data.map(item => item.taskName);
              efficiencyChart.data.datasets[0].data = data.map(item => {
@@ -454,8 +523,8 @@
 
         function showError(title, message) {
             showMessage(title, message);
-            updateDashboard(true); // Reset metrics on error
-            tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
+            updateDashboard([], true); // Reset metrics on error
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
         }
 
         closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
