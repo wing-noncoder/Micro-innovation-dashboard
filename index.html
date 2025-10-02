@@ -35,6 +35,9 @@
         <header class="text-center mb-8">
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Micro Innovation Dashboard</h1>
             <p class="text-md text-gray-600 mt-2">Track and manage your team's innovative projects and their impact.</p>
+            <div id="user-info" class="mt-4 p-3 bg-blue-100 text-blue-800 rounded-md text-sm hidden">
+                Your User ID (UID) is: <strong id="user-uid-display" class="font-bold"></strong> (Use this to grant yourself admin access)
+            </div>
         </header>
 
         <!-- Key Metrics -->
@@ -87,7 +90,7 @@
                                 <th class="py-3 px-6 text-center">Hours Before</th>
                                 <th class="py-3 px-6 text-center">Hours After</th>
                                 <th class="py-3 px-6 text-center">Efficiency Gain</th>
-                                <th class="py-3 px-6 text-center">Actions</th>
+                                <th id="actions-header" class="py-3 px-6 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="text-gray-600 text-sm font-light">
@@ -98,7 +101,7 @@
             </div>
 
             <!-- Add Item Form -->
-            <div id="add-item-container" class="bg-white p-6 rounded-lg shadow-md">
+            <div id="add-item-container" class="bg-white p-6 rounded-lg shadow-md hidden">
                 <h2 class="text-2xl font-bold mb-4">Add New Innovation</h2>
                 <form id="add-item-form">
                     <div class="mb-4">
@@ -169,6 +172,10 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
+        // --- Admin Configuration ---
+        // IMPORTANT: Add the Firebase Authentication UID of each admin user here.
+        const ADMIN_UIDS = ["REPLACE_WITH_YOUR_ADMIN_UID"]; 
+
         // --- Firebase Configuration ---
         const YOUR_FIREBASE_CONFIG = {
           apiKey: "AIzaSyBXXSd3BpMDdllqG07R2OVnRTiqvrm79Tc",
@@ -184,6 +191,7 @@
 
         // --- DOM Elements ---
         const form = document.getElementById('add-item-form');
+        const addItemContainer = document.getElementById('add-item-container');
         const tableBody = document.querySelector('#innovation-table tbody');
         const modal = document.getElementById('notification-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -191,7 +199,7 @@
         const closeModalBtn = document.getElementById('close-modal-btn');
         const teamFilter = document.getElementById('team-filter');
         const methodFilter = document.getElementById('method-filter');
-
+        const actionsHeader = document.getElementById('actions-header');
 
         // --- App State ---
         let db; // Firestore instance
@@ -199,6 +207,7 @@
         let teamEfficiencyChart;
         let allInnovationData = []; 
         let unsubscribe; // To store the Firestore listener
+        let currentUserIsAdmin = false;
 
         // --- Main App Logic ---
         function startApp() {
@@ -208,13 +217,7 @@
             if (!firebaseConfig) {
                 const errorMessage = "This dashboard is not connected to a database. Please add your Firebase project configuration to the 'YOUR_FIREBASE_CONFIG' variable in the script section of this file to enable live data.";
                 showError("Configuration Needed", errorMessage);
-                
-                const formToDisable = document.getElementById('add-item-form');
-                const formButton = formToDisable.querySelector('button');
-                formToDisable.querySelectorAll('input').forEach(input => input.disabled = true);
-                formButton.disabled = true;
-                formButton.classList.add('opacity-50', 'cursor-not-allowed');
-                return; // Stop execution
+                return; 
             }
 
             const app = initializeFirebaseApp(firebaseConfig);
@@ -223,6 +226,17 @@
 
             onAuthStateChanged(auth, user => {
                 if (user) {
+                    // Display UID prominently on the page
+                    const userInfoDiv = document.getElementById('user-info');
+                    const userUidDisplay = document.getElementById('user-uid-display');
+                    if (userInfoDiv && userUidDisplay) {
+                        userUidDisplay.textContent = user.uid;
+                        userInfoDiv.classList.remove('hidden');
+                    }
+                    
+                    currentUserIsAdmin = ADMIN_UIDS.includes(user.uid);
+                    toggleAdminUI(currentUserIsAdmin);
+
                     if (unsubscribe) unsubscribe(); 
                     
                     const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
@@ -235,6 +249,8 @@
                         showError("Data Error", "Failed to retrieve live data. Please check your connection or permissions.");
                     });
                 } else {
+                     currentUserIsAdmin = false;
+                     toggleAdminUI(false);
                      if (unsubscribe) unsubscribe();
                      updateDashboard([], true); 
                 }
@@ -256,6 +272,19 @@
         }
 
         document.addEventListener('DOMContentLoaded', startApp);
+        
+        // --- UI Control ---
+        function toggleAdminUI(isAdmin) {
+            if (isAdmin) {
+                addItemContainer.classList.remove('hidden');
+                actionsHeader.classList.remove('hidden');
+            } else {
+                addItemContainer.classList.add('hidden');
+                actionsHeader.classList.add('hidden');
+            }
+            // Re-render table to show/hide action buttons in rows
+            applyFilters();
+        }
 
         // --- Filtering Logic ---
         teamFilter.addEventListener('change', applyFilters);
@@ -309,6 +338,14 @@
             tableBody.innerHTML = ''; 
             data.forEach(item => {
                 const efficiency = item.hoursBefore > 0 ? Math.round(((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100) : 0;
+                
+                const actionsHtml = currentUserIsAdmin ? `
+                    <td class="py-3 px-6 text-center">
+                        <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
+                        <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
+                    </td>
+                ` : `<td class="py-3 px-6 text-center"></td>`;
+
                 const rowHtml = `
                     <tr class="border-b border-gray-200 hover:bg-gray-100" data-id="${item.id}">
                         <td class="py-3 px-6">${item.taskName}</td>
@@ -317,10 +354,7 @@
                         <td class="py-3 px-6 text-center">${item.hoursBefore}</td>
                         <td class="py-3 px-6 text-center">${item.hoursAfter}</td>
                         <td class="py-3 px-6 text-center text-green-600 font-semibold">${efficiency}%</td>
-                        <td class="py-3 px-6 text-center">
-                            <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
-                            <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
-                        </td>
+                        ${actionsHtml}
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML('beforeend', rowHtml);
