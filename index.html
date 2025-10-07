@@ -686,7 +686,7 @@
                 acc[item.method] = (acc[item.method] || 0) + 1;
                 return acc;
             }, {});
-            if (Object.keys(methodCounts).length === 0) return 'N/A';
+            if (Object.keys(methodCounts).length === 0) return 'NA';
             return Object.keys(methodCounts).reduce((a, b) => methodCounts[a] > methodCounts[b] ? a : b);
         }
         
@@ -802,4 +802,3 @@
     </script>
 </body>
 </html>
-
