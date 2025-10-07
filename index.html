@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -26,6 +28,14 @@
          .loading-text {
             font-size: 1.5rem; /* Larger than metric titles */
             font-weight: 500;
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -65,7 +75,7 @@
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                  <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold">Innovation Pipeline</h2>
-                    <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                    <div class="flex items-center space-x-2 sm:space-x-4 mt-4 sm:mt-0">
                         <div>
                             <label for="team-filter" class="text-sm font-medium">Team:</label>
                             <select id="team-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
@@ -78,6 +88,12 @@
                                 <option>All</option>
                             </select>
                         </div>
+                        <div>
+                            <label for="status-filter" class="text-sm font-medium">Status:</label>
+                            <select id="status-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option>All</option>
+                            </select>
+                        </div>
                     </div>
                  </div>
                 <div class="overflow-x-auto">
@@ -87,6 +103,7 @@
                                 <th class="py-3 px-6">Task Name</th>
                                 <th class="py-3 px-6">Team</th>
                                 <th class="py-3 px-6">Method</th>
+                                <th class="py-3 px-6">Status</th>
                                 <th class="py-3 px-6 text-center">Hours Before</th>
                                 <th class="py-3 px-6 text-center">Hours After</th>
                                 <th class="py-3 px-6 text-center">Efficiency Gain</th>
@@ -94,40 +111,60 @@
                             </tr>
                         </thead>
                         <tbody class="text-gray-600 text-sm font-light">
-                           <tr><td colspan="7" class="text-center p-4">Connecting to database...</td></tr>
+                           <tr><td colspan="8" class="text-center p-4">Connecting to database...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Add Item Form -->
-            <div id="add-item-container" class="bg-white p-6 rounded-lg shadow-md hidden">
-                <h2 class="text-2xl font-bold mb-4">Add New Innovation</h2>
-                <form id="add-item-form">
-                    <div class="mb-4">
-                        <label for="taskName" class="block text-sm font-medium text-gray-700">Task Name</label>
-                        <input type="text" id="taskName" name="taskName" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                     <div class="mb-4">
-                        <label for="team" class="block text-sm font-medium text-gray-700">Team</label>
-                        <input type="text" id="team" name="team" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="innovationMethod" class="block text-sm font-medium text-gray-700">Innovation Method</label>
-                        <input type="text" id="innovationMethod" name="innovationMethod" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="hoursBefore" class="block text-sm font-medium text-gray-700">Operation Hours Before</label>
-                        <input type="number" id="hoursBefore" name="hoursBefore" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="hoursAfter" class="block text-sm font-medium text-gray-700">Operation Hours After</label>
-                        <input type="number" id="hoursAfter" name="hoursAfter" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Add Item
+            <!-- Admin Panel (Add/Import) -->
+            <div id="admin-panel" class="bg-white p-6 rounded-lg shadow-md hidden">
+                <!-- Add Item Form -->
+                <div>
+                    <h2 class="text-2xl font-bold mb-4">Add New Innovation</h2>
+                    <form id="add-item-form">
+                        <div class="mb-4">
+                            <label for="taskName" class="block text-sm font-medium text-gray-700">Task Name</label>
+                            <input type="text" id="taskName" name="taskName" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                         <div class="mb-4">
+                            <label for="team" class="block text-sm font-medium text-gray-700">Team</label>
+                            <input type="text" id="team" name="team" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="innovationMethod" class="block text-sm font-medium text-gray-700">Innovation Method</label>
+                            <input type="text" id="innovationMethod" name="innovationMethod" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                            <select id="status" name="status" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                                <option>Idea</option>
+                                <option>In Progress</option>
+                                <option>Completed</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="hoursBefore" class="block text-sm font-medium text-gray-700">Operation Hours Before</label>
+                            <input type="number" id="hoursBefore" name="hoursBefore" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="hoursAfter" class="block text-sm font-medium text-gray-700">Operation Hours After</label>
+                            <input type="number" id="hoursAfter" name="hoursAfter" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Add Item
+                        </button>
+                    </form>
+                </div>
+                <!-- File Import Section -->
+                <div class="mt-8 border-t pt-6">
+                    <h2 class="text-2xl font-bold mb-4">Import from File</h2>
+                    <p class="text-sm text-gray-600 mb-2">File (CSV or XLSX) must have headers: <br><code class="text-xs bg-gray-200 p-1 rounded">Task Name,Team,Method,Status,Hours Before,Hours After</code></p>
+                    <input type="file" id="file-input" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <button id="import-btn" class="mt-4 w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Import File
                     </button>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -174,7 +211,7 @@
         
         // --- Admin Configuration ---
         // IMPORTANT: Add the Firebase Authentication UID of each admin user here.
-        const ADMIN_UIDS = ["35MaZO8wB2RorbLxc9ptR6j1NCB3"]; 
+        const ADMIN_UIDS = ["REPLACE_WITH_YOUR_ADMIN_UID"]; 
 
         // --- Firebase Configuration ---
         const YOUR_FIREBASE_CONFIG = {
@@ -191,7 +228,7 @@
 
         // --- DOM Elements ---
         const form = document.getElementById('add-item-form');
-        const addItemContainer = document.getElementById('add-item-container');
+        const adminPanel = document.getElementById('admin-panel');
         const tableBody = document.querySelector('#innovation-table tbody');
         const modal = document.getElementById('notification-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -199,7 +236,10 @@
         const closeModalBtn = document.getElementById('close-modal-btn');
         const teamFilter = document.getElementById('team-filter');
         const methodFilter = document.getElementById('method-filter');
+        const statusFilter = document.getElementById('status-filter');
         const actionsHeader = document.getElementById('actions-header');
+        const fileInput = document.getElementById('file-input');
+        const importBtn = document.getElementById('import-btn');
 
         // --- App State ---
         let db; // Firestore instance
@@ -208,6 +248,7 @@
         let allInnovationData = []; 
         let unsubscribe; // To store the Firestore listener
         let currentUserIsAdmin = false;
+        const STATUS_OPTIONS = ["Idea", "In Progress", "Completed"];
 
         // --- Main App Logic ---
         function startApp() {
@@ -276,10 +317,10 @@
         // --- UI Control ---
         function toggleAdminUI(isAdmin) {
             if (isAdmin) {
-                addItemContainer.classList.remove('hidden');
+                adminPanel.classList.remove('hidden');
                 actionsHeader.classList.remove('hidden');
             } else {
-                addItemContainer.classList.add('hidden');
+                adminPanel.classList.add('hidden');
                 actionsHeader.classList.add('hidden');
             }
             // Re-render table to show/hide action buttons in rows
@@ -289,14 +330,16 @@
         // --- Filtering Logic ---
         teamFilter.addEventListener('change', applyFilters);
         methodFilter.addEventListener('change', applyFilters);
+        statusFilter.addEventListener('change', applyFilters);
 
         function populateFilters(data) {
-            const teams = [...new Set(data.map(item => item.team))];
-            const methods = [...new Set(data.map(item => item.method))];
+            const teams = [...new Set(data.map(item => item.team))].sort();
+            const methods = [...new Set(data.map(item => item.method))].sort();
+            const statuses = [...new Set(data.map(item => item.status))].sort();
             
             const currentTeam = teamFilter.value;
             teamFilter.innerHTML = '<option>All</option>';
-            teams.sort().forEach(team => {
+            teams.forEach(team => {
                 teamFilter.innerHTML += `<option value="${team}">${team}</option>`;
             });
             teamFilter.value = teams.includes(currentTeam) ? currentTeam : 'All';
@@ -304,15 +347,23 @@
 
             const currentMethod = methodFilter.value;
             methodFilter.innerHTML = '<option>All</option>';
-            methods.sort().forEach(method => {
+            methods.forEach(method => {
                 methodFilter.innerHTML += `<option value="${method}">${method}</option>`;
             });
             methodFilter.value = methods.includes(currentMethod) ? currentMethod : 'All';
+
+            const currentStatus = statusFilter.value;
+            statusFilter.innerHTML = '<option>All</option>';
+            statuses.forEach(status => {
+                statusFilter.innerHTML += `<option value="${status}">${status}</option>`;
+            });
+            statusFilter.value = statuses.includes(currentStatus) ? currentStatus : 'All';
         }
 
         function applyFilters() {
             const selectedTeam = teamFilter.value;
             const selectedMethod = methodFilter.value;
+            const selectedStatus = statusFilter.value;
 
             let filteredData = allInnovationData;
 
@@ -322,6 +373,9 @@
             if (selectedMethod !== 'All') {
                 filteredData = filteredData.filter(item => item.method === selectedMethod);
             }
+            if (selectedStatus !== 'All') {
+                filteredData = filteredData.filter(item => item.status === selectedStatus);
+            }
             
             renderTable(filteredData);
             updateDashboard(filteredData);
@@ -330,9 +384,21 @@
         }
 
         // --- UI Rendering ---
+        function getStatusBadge(status) {
+            switch (status) {
+                case 'Completed':
+                    return `<span class="status-badge bg-green-200 text-green-800">${status}</span>`;
+                case 'In Progress':
+                    return `<span class="status-badge bg-yellow-200 text-yellow-800">${status}</span>`;
+                case 'Idea':
+                default:
+                    return `<span class="status-badge bg-blue-200 text-blue-800">${status || 'Idea'}</span>`;
+            }
+        }
+
         function renderTable(data) {
             if (data.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-4">No innovations match the current filters.</td></tr>`;
+                 tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-4">No innovations match the current filters.</td></tr>`;
                  return;
             }
             tableBody.innerHTML = ''; 
@@ -351,6 +417,7 @@
                         <td class="py-3 px-6">${item.taskName}</td>
                         <td class="py-3 px-6">${item.team}</td>
                         <td class="py-3 px-6">${item.method}</td>
+                        <td class="py-3 px-6">${getStatusBadge(item.status)}</td>
                         <td class="py-3 px-6 text-center">${item.hoursBefore}</td>
                         <td class="py-3 px-6 text-center">${item.hoursAfter}</td>
                         <td class="py-3 px-6 text-center text-green-600 font-semibold">${efficiency}%</td>
@@ -371,6 +438,7 @@
             const taskName = e.target.taskName.value.trim();
             const team = e.target.team.value.trim();
             const innovationMethod = e.target.innovationMethod.value.trim();
+            const status = e.target.status.value;
             const hoursBefore = parseFloat(e.target.hoursBefore.value);
             const hoursAfter = parseFloat(e.target.hoursAfter.value);
 
@@ -385,7 +453,7 @@
             
             try {
                 const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
-                await addDoc(dataCollection, { taskName, team, method: innovationMethod, hoursBefore, hoursAfter });
+                await addDoc(dataCollection, { taskName, team, method: innovationMethod, status, hoursBefore, hoursAfter });
                 showMessage("Success!","New innovation added successfully!");
                 form.reset();
             } catch (error) {
@@ -394,6 +462,93 @@
             }
         });
         
+        // --- File Import ---
+        importBtn.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                showMessage("No File", "Please select a file to import.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = e.target.result;
+                if (file.name.endsWith('.csv')) {
+                    Papa.parse(data, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => processImportedData(results.data),
+                        error: (err) => showError("File Error", "Could not parse the CSV file.")
+                    });
+                } else if (file.name.endsWith('.xlsx')) {
+                    try {
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        processImportedData(jsonData);
+                    } catch (error) {
+                        console.error("XLSX parsing error:", error);
+                        showError("File Error", "Could not parse the XLSX file.");
+                    }
+                } else {
+                    showError("Unsupported File", "Please select a CSV or XLSX file.");
+                }
+            };
+
+            if (file.name.endsWith('.csv')) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsBinaryString(file);
+            }
+        });
+
+        async function processImportedData(data) {
+            if (!data || data.length === 0) {
+                showMessage("No Data", "No valid data found in the file to import.");
+                return;
+            }
+
+            const expectedHeaders = ["Task Name", "Team", "Method", "Status", "Hours Before", "Hours After"];
+            const actualHeaders = Object.keys(data[0]);
+            const hasAllHeaders = expectedHeaders.every(h => actualHeaders.includes(h));
+
+            if (!hasAllHeaders) {
+                showError("Invalid File", `File headers are incorrect. Expected: ${expectedHeaders.join(', ')}`);
+                return;
+            }
+
+            const dataToUpload = [];
+            for (const row of data) {
+                const taskName = row["Task Name"]?.trim();
+                const team = row["Team"]?.trim();
+                const method = row["Method"]?.trim();
+                const status = row["Status"]?.trim();
+                const hoursBefore = parseFloat(row["Hours Before"]);
+                const hoursAfter = parseFloat(row["Hours After"]);
+
+                if (taskName && team && method && status && STATUS_OPTIONS.includes(status) && !isNaN(hoursBefore) && !isNaN(hoursAfter) && hoursBefore > hoursAfter) {
+                    dataToUpload.push({ taskName, team, method, status, hoursBefore, hoursAfter });
+                } else {
+                    console.warn("Skipping invalid row:", row);
+                }
+            }
+
+            if (dataToUpload.length > 0) {
+                try {
+                    const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
+                    await Promise.all(dataToUpload.map(item => addDoc(dataCollection, item)));
+                    showMessage("Import Successful", `Successfully imported ${dataToUpload.length} innovations.`);
+                    fileInput.value = ''; // Clear the file input
+                } catch(error) {
+                    console.error("Error during bulk upload:", error);
+                    showError("Import Error", "An error occurred while saving the data. Please try again.");
+                }
+            } else {
+                showMessage("No Data", "No valid data rows found in the file to import.");
+            }
+        }
+
         // --- Data Manipulation Functions ---
         async function deleteRow(button) {
             const row = button.closest('tr');
@@ -414,16 +569,21 @@
             row.dataset.originalTaskName = cells[0].innerText;
             row.dataset.originalTeam = cells[1].innerText;
             row.dataset.originalMethod = cells[2].innerText;
-            row.dataset.originalHoursBefore = cells[3].innerText;
-            row.dataset.originalHoursAfter = cells[4].innerText;
+            row.dataset.originalStatus = cells[3].querySelector('span').innerText;
+            row.dataset.originalHoursBefore = cells[4].innerText;
+            row.dataset.originalHoursAfter = cells[5].innerText;
 
-            cells[0].innerHTML = `<input type="text" value="${cells[0].innerText}" class="table-input">`;
-            cells[1].innerHTML = `<input type="text" value="${cells[1].innerText}" class="table-input">`;
-            cells[2].innerHTML = `<input type="text" value="${cells[2].innerText}" class="table-input">`;
-            cells[3].innerHTML = `<input type="number" step="0.1" value="${cells[3].innerText}" class="table-input text-center">`;
-            cells[4].innerHTML = `<input type="number" step="0.1" value="${cells[4].innerText}" class="table-input text-center">`;
+            cells[0].innerHTML = `<input type="text" value="${row.dataset.originalTaskName}" class="table-input">`;
+            cells[1].innerHTML = `<input type="text" value="${row.dataset.originalTeam}" class="table-input">`;
+            cells[2].innerHTML = `<input type="text" value="${row.dataset.originalMethod}" class="table-input">`;
+            
+            const statusOptionsHtml = STATUS_OPTIONS.map(opt => `<option value="${opt}" ${opt === row.dataset.originalStatus ? 'selected' : ''}>${opt}</option>`).join('');
+            cells[3].innerHTML = `<select class="table-input">${statusOptionsHtml}</select>`;
+            
+            cells[4].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursBefore}" class="table-input text-center">`;
+            cells[5].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursAfter}" class="table-input text-center">`;
 
-            cells[6].innerHTML = `
+            cells[7].innerHTML = `
                 <button class="text-green-600 hover:text-green-900 mr-2" onclick="window.app.saveRow(this)">Save</button>
                 <button class="text-gray-600 hover:text-gray-900" onclick="window.app.cancelEdit(this)">Cancel</button>
             `;
@@ -432,13 +592,14 @@
         async function saveRow(button) {
             const row = button.closest('tr');
             const docId = row.dataset.id;
-            const inputs = row.querySelectorAll('input');
+            const inputs = row.querySelectorAll('input, select');
 
             const taskName = inputs[0].value.trim();
             const team = inputs[1].value.trim();
             const method = inputs[2].value.trim();
-            const hoursBefore = parseFloat(inputs[3].value);
-            const hoursAfter = parseFloat(inputs[4].value);
+            const status = inputs[3].value;
+            const hoursBefore = parseFloat(inputs[4].value);
+            const hoursAfter = parseFloat(inputs[5].value);
 
             if (taskName === '' || team === '' || method === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
                  showMessage('Invalid Input','Please fill in all fields with valid numbers.');
@@ -451,7 +612,7 @@
 
             try {
                 const docRef = doc(db, `/artifacts/${appId}/public/data/innovations`, docId);
-                await updateDoc(docRef, { taskName, team, method, hoursBefore, hoursAfter });
+                await updateDoc(docRef, { taskName, team, method, status, hoursBefore, hoursAfter });
             } catch (error) {
                 console.error("Error updating document: ", error);
                 showError("Update Error","Failed to save changes. Please try again.");
@@ -470,11 +631,12 @@
             cells[0].innerText = row.dataset.originalTaskName;
             cells[1].innerText = row.dataset.originalTeam;
             cells[2].innerText = row.dataset.originalMethod;
-            cells[3].innerText = row.dataset.originalHoursBefore;
-            cells[4].innerText = row.dataset.originalHoursAfter;
-            cells[5].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
+            cells[3].innerHTML = getStatusBadge(row.dataset.originalStatus);
+            cells[4].innerText = row.dataset.originalHoursBefore;
+            cells[5].innerText = row.dataset.originalHoursAfter;
+            cells[6].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
 
-            cells[6].innerHTML = `
+            cells[7].innerHTML = `
                 <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
                 <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
             `;
@@ -527,6 +689,15 @@
             if (Object.keys(methodCounts).length === 0) return 'N/A';
             return Object.keys(methodCounts).reduce((a, b) => methodCounts[a] > methodCounts[b] ? a : b);
         }
+        
+        function generateColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                const hue = (i * 137.508) % 360; // Use golden angle for visually distinct colors
+                colors.push(`hsla(${hue}, 70%, 60%, 0.8)`);
+            }
+            return colors;
+        }
 
         function renderTaskChart() {
             const ctx = document.getElementById('taskEfficiencyChart').getContext('2d');
@@ -535,8 +706,8 @@
                 data: { labels: [], datasets: [{
                     label: 'Efficiency Gain (%)',
                     data: [],
-                    backgroundColor: 'rgba(79, 70, 229, 0.8)',
-                    borderColor: 'rgba(79, 70, 229, 1)',
+                    backgroundColor: [],
+                    borderColor: [],
                     borderWidth: 1 }]
                 },
                 options: {
@@ -554,8 +725,8 @@
                 data: { labels: [], datasets: [{
                     label: 'Average Efficiency Gain (%)',
                     data: [],
-                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                    borderColor: 'rgba(34, 197, 94, 1)',
+                    backgroundColor: [],
+                    borderColor: [],
                     borderWidth: 1 }]
                 },
                 options: {
@@ -568,6 +739,7 @@
         
         function updateTaskChart(data) {
              if (!taskEfficiencyChart) return;
+             const colors = generateColors(data.length);
              taskEfficiencyChart.data.labels = data.map(item => item.taskName);
              taskEfficiencyChart.data.datasets[0].data = data.map(item => {
                 if (item.hoursBefore > 0) {
@@ -575,6 +747,8 @@
                 }
                 return 0;
              });
+             taskEfficiencyChart.data.datasets[0].backgroundColor = colors;
+             taskEfficiencyChart.data.datasets[0].borderColor = colors.map(c => c.replace('0.8', '1'));
              taskEfficiencyChart.update();
         }
 
@@ -598,9 +772,12 @@
                 const avg = teamData[team].totalGain / teamData[team].count;
                 return Math.round(avg);
             });
-
+            
+            const colors = generateColors(labels.length);
             teamEfficiencyChart.data.labels = labels;
             teamEfficiencyChart.data.datasets[0].data = chartData;
+            teamEfficiencyChart.data.datasets[0].backgroundColor = colors;
+            teamEfficiencyChart.data.datasets[0].borderColor = colors.map(c => c.replace('0.8', '1'));
             teamEfficiencyChart.update();
         }
 
@@ -614,7 +791,7 @@
         function showError(title, message) {
             showMessage(title, message);
             updateDashboard([], true); // Reset metrics on error
-            tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
         }
 
         closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
@@ -625,3 +802,4 @@
     </script>
 </body>
 </html>
+
