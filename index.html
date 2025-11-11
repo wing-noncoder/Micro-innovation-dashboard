@@ -57,7 +57,7 @@
                 <p id="total-projects" class="text-3xl font-bold text-blue-600 loading-text">...</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
-                <h2 class="text-lg font-semibold text-gray-500">Total Hours Saved</h2>
+                <h2 class="text-lg font-semibold text-gray-500">Total Hours Saved (per Month)</h2>
                 <p id="total-hours-saved" class="text-3xl font-bold text-green-600 loading-text">...</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center">
@@ -108,12 +108,13 @@
                                 <th class="py-3 px-6">Status</th>
                                 <th class="py-3 px-6 text-center">Hours Before</th>
                                 <th class="py-3 px-6 text-center">Hours After</th>
+                                <th class="py-3 px-6 text-center">Hours Period</th>
                                 <th class="py-3 px-6 text-center">Efficiency Gain</th>
                                 <th id="actions-header" class="py-3 px-6 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="text-gray-600 text-sm font-light">
-                           <tr><td colspan="10" class="text-center p-4">Connecting to database...</td></tr>
+                           <tr><td colspan="11" class="text-center p-4">Connecting to database...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -161,6 +162,13 @@
                             <label for="hoursAfter" class="block text-sm font-medium text-gray-700">Operation Hours After</label>
                             <input type="number" id="hoursAfter" name="hoursAfter" step="0.1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                         </div>
+                        <div class="mb-4">
+                            <label for="hoursPeriod" class="block text-sm font-medium text-gray-700">Hours Period</label>
+                            <select id="hoursPeriod" name="hoursPeriod" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                                <option value="per month">per month</option>
+                                <option value="per quarter">per quarter</option>
+                            </select>
+                        </div>
                         <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Add Item
                         </button>
@@ -169,7 +177,7 @@
                 <!-- File Import Section -->
                 <div class="mt-8 border-t pt-6">
                     <h2 class="text-2xl font-bold mb-4">Import from File</h2>
-                    <p class="text-sm text-gray-600 mb-2">File (CSV or XLSX) must have headers: <br><code class="text-xs bg-gray-200 p-1 rounded">Task Name,Description,Team,Owner,Method,Status,Hours Before,Hours After</code></p>
+                    <p class="text-sm text-gray-600 mb-2">File (CSV or XLSX) must have headers: <br><code class="text-xs bg-gray-200 p-1 rounded">Task Name,Description,Team,Owner,Method,Status,Hours Before,Hours After,Hours Period</code></p>
                     <input type="file" id="file-input" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                     <button id="import-btn" class="mt-4 w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                         Import File
@@ -409,7 +417,7 @@
 
         function renderTable(data) {
             if (data.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="10" class="text-center p-4">No innovations match the current filters.</td></tr>`;
+                 tableBody.innerHTML = `<tr><td colspan="11" class="text-center p-4">No innovations match the current filters.</td></tr>`;
                  return;
             }
             tableBody.innerHTML = ''; 
@@ -433,6 +441,7 @@
                         <td class="py-3 px-6">${getStatusBadge(item.status)}</td>
                         <td class="py-3 px-6 text-center">${item.hoursBefore}</td>
                         <td class="py-3 px-6 text-center">${item.hoursAfter}</td>
+                        <td class="py-3 px-6 text-center">${item.hoursPeriod || 'per month'}</td>
                         <td class="py-3 px-6 text-center text-green-600 font-semibold">${efficiency}%</td>
                         ${actionsHtml}
                     </tr>
@@ -456,6 +465,7 @@
             const status = e.target.status.value;
             const hoursBefore = parseFloat(e.target.hoursBefore.value);
             const hoursAfter = parseFloat(e.target.hoursAfter.value);
+            const hoursPeriod = e.target.hoursPeriod.value;
 
             if (taskName === '' || team === '' || owner === '' || innovationMethod === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
                  showMessage('Invalid Input','Please fill in all fields with valid numbers.');
@@ -468,7 +478,7 @@
             
             try {
                 const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
-                await addDoc(dataCollection, { taskName, description, team, owner, method: innovationMethod, status, hoursBefore, hoursAfter });
+                await addDoc(dataCollection, { taskName, description, team, owner, method: innovationMethod, status, hoursBefore, hoursAfter, hoursPeriod });
                 showMessage("Success!","New innovation added successfully!");
                 form.reset();
             } catch (error) {
@@ -533,6 +543,15 @@
                 return;
             }
 
+            const expectedHeaders = ["Task Name", "Description", "Team", "Owner", "Method", "Status", "Hours Before", "Hours After", "Hours Period"];
+            const actualHeaders = Object.keys(data[0]);
+            const hasAllHeaders = expectedHeaders.every(h => actualHeaders.includes(h));
+
+            if (!hasAllHeaders) {
+                showError("Invalid File", `File headers are incorrect. Expected: ${expectedHeaders.join(', ')}`);
+                return;
+            }
+
             const dataToUpload = [];
             for (const row of data) {
                 const taskName = row["Task Name"]?.trim();
@@ -543,9 +562,12 @@
                 const status = row["Status"]?.trim();
                 const hoursBefore = parseFloat(row["Hours Before"]);
                 const hoursAfter = parseFloat(row["Hours After"]);
+                const hoursPeriod = row["Hours Period"]?.trim();
 
-                if (taskName && team && owner && method && status && STATUS_OPTIONS.includes(status) && !isNaN(hoursBefore) && !isNaN(hoursAfter) && hoursBefore > hoursAfter) {
-                    dataToUpload.push({ taskName, description, team, owner, method, status, hoursBefore, hoursAfter });
+                if (taskName && team && owner && method && status && STATUS_OPTIONS.includes(status) &&
+                    !isNaN(hoursBefore) && !isNaN(hoursAfter) && hoursBefore > hoursAfter &&
+                    hoursPeriod && ['per month', 'per quarter'].includes(hoursPeriod)) {
+                    dataToUpload.push({ taskName, description, team, owner, method, status, hoursBefore, hoursAfter, hoursPeriod });
                 } else {
                     console.warn("Skipping invalid row:", row);
                 }
@@ -592,6 +614,7 @@
             row.dataset.originalStatus = statusSpan ? statusSpan.innerText : cells[5].innerText;
             row.dataset.originalHoursBefore = cells[6].innerText;
             row.dataset.originalHoursAfter = cells[7].innerText;
+            row.dataset.originalHoursPeriod = cells[8].innerText;
 
             cells[0].innerHTML = `<input type="text" value="${row.dataset.originalTaskName}" class="table-input">`;
             cells[1].innerHTML = `<input type="text" value="${row.dataset.originalDescription}" class="table-input">`;
@@ -605,7 +628,11 @@
             cells[6].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursBefore}" class="table-input text-center">`;
             cells[7].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursAfter}" class="table-input text-center">`;
 
-            cells[9].innerHTML = `
+            const periodOptions = ['per month', 'per quarter'];
+            const periodOptionsHtml = periodOptions.map(opt => `<option value="${opt}" ${opt === row.dataset.originalHoursPeriod ? 'selected' : ''}>${opt}</option>`).join('');
+            cells[8].innerHTML = `<select class="table-input">${periodOptionsHtml}</select>`;
+
+            cells[10].innerHTML = `
                 <button class="text-green-600 hover:text-green-900 mr-2" onclick="window.app.saveRow(this)">Save</button>
                 <button class="text-gray-600 hover:text-gray-900" onclick="window.app.cancelEdit(this)">Cancel</button>
             `;
@@ -624,6 +651,7 @@
             const status = inputs[5].value;
             const hoursBefore = parseFloat(inputs[6].value);
             const hoursAfter = parseFloat(inputs[7].value);
+            const hoursPeriod = inputs[8].value;
 
             if (taskName === '' || team === '' || owner === '' || method === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
                  showMessage('Invalid Input','Please fill in all fields with valid numbers.');
@@ -636,7 +664,7 @@
 
             try {
                 const docRef = doc(db, `/artifacts/${appId}/public/data/innovations`, docId);
-                await updateDoc(docRef, { taskName, description, team, owner, method, status, hoursBefore, hoursAfter });
+                await updateDoc(docRef, { taskName, description, team, owner, method, status, hoursBefore, hoursAfter, hoursPeriod });
             } catch (error) {
                 console.error("Error updating document: ", error);
                 showError("Update Error","Failed to save changes. Please try again.");
@@ -660,9 +688,10 @@
             cells[5].innerHTML = getStatusBadge(row.dataset.originalStatus);
             cells[6].innerText = row.dataset.originalHoursBefore;
             cells[7].innerText = row.dataset.originalHoursAfter;
-            cells[8].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
+            cells[8].innerText = row.dataset.originalHoursPeriod;
+            cells[9].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
 
-            cells[9].innerHTML = `
+            cells[10].innerHTML = `
                 <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
                 <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
             `;
@@ -674,6 +703,12 @@
             const pHours = document.getElementById('total-hours-saved');
             const pEfficiency = document.getElementById('avg-efficiency');
             const pMethod = document.getElementById('most-used-method');
+
+            // Add null checks to prevent crash
+            if (!pProjects || !pHours || !pEfficiency || !pMethod) {
+                console.error("Dashboard metric element(s) not found. Skipping UI update.");
+                return;
+            }
 
             if (isLoading) {
                 pProjects.innerHTML = `<span class="loading-text">...</span>`;
@@ -689,7 +724,14 @@
             pMethod.classList.remove('loading-text');
             
             const totalProjects = data.length;
-            const totalHoursSaved = data.reduce((acc, item) => acc + (item.hoursBefore - item.hoursAfter), 0);
+            
+            const totalHoursSaved = data.reduce((acc, item) => {
+                const hoursSaved = (item.hoursBefore || 0) - (item.hoursAfter || 0);
+                const period = item.hoursPeriod || 'per month'; // Default old data
+                const normalizedHoursSaved = (period === 'per quarter') ? (hoursSaved / 3) : hoursSaved;
+                return acc + normalizedHoursSaved;
+            }, 0);
+
             const totalEfficiencySum = data.reduce((acc, item) => {
                 if (item.hoursBefore > 0) {
                     const efficiency = ((item.hoursBefore - item.hoursAfter) / item.hoursBefore) * 100;
@@ -817,7 +859,7 @@
         function showError(title, message) {
             showMessage(title, message);
             updateDashboard([], true); // Reset metrics on error
-            tableBody.innerHTML = `<tr><td colspan="10" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="11" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
         }
 
         closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
