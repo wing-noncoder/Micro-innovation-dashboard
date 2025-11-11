@@ -318,7 +318,7 @@
                     }
                 } catch (e) {
                      console.error("Authentication failed:", e);
-                     showError("Authentication Failed", "Could not sign in to the database service. Please try reloading the page.");
+                     showError("Authentication Failed", "Could not sign in to the database service. This means your User ID cannot be displayed and the admin panel will not appear. Please try reloading the page.");
                 }
             })();
         }
@@ -485,12 +485,51 @@
                 return;
             }
 
-            const expectedHeaders = ["Task Name", "Description", "Team", "Owner", "Method", "Status", "Hours Before", "Hours After"];
-            const actualHeaders = Object.keys(data[0]);
-            const hasAllHeaders = expectedHeaders.every(h => actualHeaders.includes(h));
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = e.target.result;
+                try {
+                    if (file.name.endsWith('.csv')) {
+                        Papa.parse(data, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                if (results.data) {
+                                    processImportedData(results.data);
+                                } else {
+                                    showError("File Error", "Could not parse the CSV file.");
+                                }
+                            },
+                            error: (err) => showError("File Error", "Could not parse the CSV file: " + err.message)
+                        });
+                    } else if (file.name.endsWith('.xlsx')) {
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        processImportedData(jsonData);
+                    } else {
+                        showError("Unsupported File", "Please select a CSV or XLSX file.");
+                    }
+                } catch (error) {
+                    console.error("File processing error:", error);
+                    showError("File Error", "Could not parse the selected file.");
+                }
+            };
+            reader.onerror = () => {
+                 showError("File Error", "Could not read the file.");
+            };
 
-            if (!hasAllHeaders) {
-                showError("Invalid File", `File headers are incorrect. Expected: ${expectedHeaders.join(', ')}`);
+            if (file.name.endsWith('.csv')) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsBinaryString(file);
+            }
+        });
+
+        async function processImportedData(data) {
+            if (!data || data.length === 0) {
+                showMessage("No Data", "No valid data found in the file to import.");
                 return;
             }
 
