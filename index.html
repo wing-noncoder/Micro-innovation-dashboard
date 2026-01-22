@@ -107,6 +107,7 @@
                                 <th class="py-3 px-6">Owner</th>
                                 <th class="py-3 px-6">Method</th>
                                 <th class="py-3 px-6">Status</th>
+                                <th class="py-3 px-6">Quarter</th>
                                 <th class="py-3 px-6 text-center">Hours Before</th>
                                 <th class="py-3 px-6 text-center">Hours After</th>
                                 <th class="py-3 px-6 text-center">Hours Period</th>
@@ -115,7 +116,7 @@
                             </tr>
                         </thead>
                         <tbody class="text-gray-600 text-sm font-light">
-                           <tr><td colspan="12" class="text-center p-4">Connecting to database...</td></tr>
+                           <tr><td colspan="13" class="text-center p-4">Connecting to database...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -155,7 +156,8 @@
                                 <input type="text" id="innovationMethod" name="innovationMethod" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Updated Grid to 5 columns to accommodate Quarter -->
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div class="mb-4">
                                 <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
                                 <select id="status" name="status" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
@@ -163,6 +165,10 @@
                                     <option>In Progress</option>
                                     <option>Completed</option>
                                 </select>
+                            </div>
+                            <div class="mb-4">
+                                <label for="quarter" class="block text-sm font-medium text-gray-700">Quarter</label>
+                                <input type="text" id="quarter" name="quarter" placeholder="e.g. Q1 2024" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                             </div>
                             <div class="mb-4">
                                 <label for="hoursBefore" class="block text-sm font-medium text-gray-700">Hours Before</label>
@@ -188,7 +194,7 @@
                 <!-- File Import Section -->
                 <div class="mt-8 border-t pt-6">
                     <h2 class="text-2xl font-bold mb-4">Import from File</h2>
-                    <p class="text-sm text-gray-600 mb-2">File (CSV or XLSX) must have headers: <br><code class="text-xs bg-gray-200 p-1 rounded">Task Name,Task Type,Description,Team,Owner,Method,Status,Hours Before,Hours After,Hours Period</code></p>
+                    <p class="text-sm text-gray-600 mb-2">File (CSV or XLSX) must have headers: <br><code class="text-xs bg-gray-200 p-1 rounded">Task Name,Task Type,Description,Team,Owner,Method,Status,Quarter,Hours Before,Hours After,Hours Period</code></p>
                     <input type="file" id="file-input" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                     <button id="import-btn" class="mt-4 w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                         Import File
@@ -428,7 +434,7 @@
 
         function renderTable(data) {
             if (data.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="12" class="text-center p-4">No innovations match the current filters.</td></tr>`;
+                 tableBody.innerHTML = `<tr><td colspan="13" class="text-center p-4">No innovations match the current filters.</td></tr>`;
                  return;
             }
             tableBody.innerHTML = ''; 
@@ -451,6 +457,7 @@
                         <td class="py-3 px-6">${item.owner || ''}</td>
                         <td class="py-3 px-6">${item.method}</td>
                         <td class="py-3 px-6">${getStatusBadge(item.status)}</td>
+                        <td class="py-3 px-6">${item.quarter || ''}</td>
                         <td class="py-3 px-6 text-center">${item.hoursBefore}</td>
                         <td class="py-3 px-6 text-center">${item.hoursAfter}</td>
                         <td class="py-3 px-6 text-center">${item.hoursPeriod || 'per month'}</td>
@@ -476,6 +483,7 @@
             const owner = e.target.owner.value.trim();
             const innovationMethod = e.target.innovationMethod.value.trim();
             const status = e.target.status.value;
+            const quarter = e.target.quarter.value.trim();
             const hoursBefore = parseFloat(e.target.hoursBefore.value);
             const hoursAfter = parseFloat(e.target.hoursAfter.value);
             const hoursPeriod = e.target.hoursPeriod.value;
@@ -491,7 +499,7 @@
             
             try {
                 const dataCollection = collection(db, `/artifacts/${appId}/public/data/innovations`);
-                await addDoc(dataCollection, { taskName, taskType, description, team, owner, method: innovationMethod, status, hoursBefore, hoursAfter, hoursPeriod });
+                await addDoc(dataCollection, { taskName, taskType, description, team, owner, method: innovationMethod, status, quarter, hoursBefore, hoursAfter, hoursPeriod });
                 showMessage("Success!","New innovation added successfully!");
                 form.reset();
             } catch (error) {
@@ -556,15 +564,15 @@
                 return;
             }
 
-            // Updated headers to include Task Type
-            const expectedHeaders = ["Task Name", "Task Type", "Description", "Team", "Owner", "Method", "Status", "Hours Before", "Hours After", "Hours Period"];
+            // Updated headers to include Task Type and Quarter
+            const expectedHeaders = ["Task Name", "Task Type", "Description", "Team", "Owner", "Method", "Status", "Quarter", "Hours Before", "Hours After", "Hours Period"];
             const actualHeaders = Object.keys(data[0]);
             // Check if essential headers are present (allowing some flexibility if needed, but strict for now)
             const requiredHeaders = ["Task Name", "Team", "Owner", "Method", "Status", "Hours Before", "Hours After"];
             const hasRequiredHeaders = requiredHeaders.every(h => actualHeaders.includes(h));
 
             if (!hasRequiredHeaders) {
-                showError("Invalid File", `File headers are missing required fields. Expected at least: ${requiredHeaders.join(', ')}. Also supports: Task Type, Description.`);
+                showError("Invalid File", `File headers are missing required fields. Expected at least: ${requiredHeaders.join(', ')}. Also supports: Task Type, Quarter, Description.`);
                 return;
             }
 
@@ -577,6 +585,7 @@
                 const owner = row["Owner"]?.trim();
                 const method = row["Method"]?.trim();
                 const status = row["Status"]?.trim();
+                const quarter = row["Quarter"]?.trim() || '';
                 const hoursBefore = parseFloat(row["Hours Before"]);
                 const hoursAfter = parseFloat(row["Hours After"]);
                 const hoursPeriod = row["Hours Period"]?.trim();
@@ -584,7 +593,7 @@
                 if (taskName && team && owner && method && status && STATUS_OPTIONS.includes(status) &&
                     !isNaN(hoursBefore) && !isNaN(hoursAfter) && hoursBefore > hoursAfter &&
                     hoursPeriod && ['per month', 'per quarter'].includes(hoursPeriod)) {
-                    dataToUpload.push({ taskName, taskType, description, team, owner, method, status, hoursBefore, hoursAfter, hoursPeriod });
+                    dataToUpload.push({ taskName, taskType, description, team, owner, method, status, quarter, hoursBefore, hoursAfter, hoursPeriod });
                 } else {
                     console.warn("Skipping invalid row:", row);
                 }
@@ -630,9 +639,10 @@
             row.dataset.originalMethod = cells[5].innerText;
             const statusSpan = cells[6].querySelector('span');
             row.dataset.originalStatus = statusSpan ? statusSpan.innerText : cells[6].innerText;
-            row.dataset.originalHoursBefore = cells[7].innerText;
-            row.dataset.originalHoursAfter = cells[8].innerText;
-            row.dataset.originalHoursPeriod = cells[9].innerText;
+            row.dataset.originalQuarter = cells[7].innerText;
+            row.dataset.originalHoursBefore = cells[8].innerText;
+            row.dataset.originalHoursAfter = cells[9].innerText;
+            row.dataset.originalHoursPeriod = cells[10].innerText;
 
             cells[0].innerHTML = `<input type="text" value="${row.dataset.originalTaskName}" class="table-input">`;
             cells[1].innerHTML = `<input type="text" value="${row.dataset.originalTaskType}" class="table-input">`;
@@ -643,15 +653,17 @@
             
             const statusOptionsHtml = STATUS_OPTIONS.map(opt => `<option value="${opt}" ${opt === row.dataset.originalStatus ? 'selected' : ''}>${opt}</option>`).join('');
             cells[6].innerHTML = `<select class="table-input">${statusOptionsHtml}</select>`;
+
+            cells[7].innerHTML = `<input type="text" value="${row.dataset.originalQuarter}" class="table-input">`;
             
-            cells[7].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursBefore}" class="table-input text-center">`;
-            cells[8].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursAfter}" class="table-input text-center">`;
+            cells[8].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursBefore}" class="table-input text-center">`;
+            cells[9].innerHTML = `<input type="number" step="0.1" value="${row.dataset.originalHoursAfter}" class="table-input text-center">`;
 
             const periodOptions = ['per month', 'per quarter'];
             const periodOptionsHtml = periodOptions.map(opt => `<option value="${opt}" ${opt === row.dataset.originalHoursPeriod ? 'selected' : ''}>${opt}</option>`).join('');
-            cells[9].innerHTML = `<select class="table-input">${periodOptionsHtml}</select>`;
+            cells[10].innerHTML = `<select class="table-input">${periodOptionsHtml}</select>`;
 
-            cells[11].innerHTML = `
+            cells[12].innerHTML = `
                 <button class="text-green-600 hover:text-green-900 mr-2" onclick="window.app.saveRow(this)">Save</button>
                 <button class="text-gray-600 hover:text-gray-900" onclick="window.app.cancelEdit(this)">Cancel</button>
             `;
@@ -669,9 +681,10 @@
             const owner = inputs[4].value.trim();
             const method = inputs[5].value.trim();
             const status = inputs[6].value;
-            const hoursBefore = parseFloat(inputs[7].value);
-            const hoursAfter = parseFloat(inputs[8].value);
-            const hoursPeriod = inputs[9].value;
+            const quarter = inputs[7].value.trim();
+            const hoursBefore = parseFloat(inputs[8].value);
+            const hoursAfter = parseFloat(inputs[9].value);
+            const hoursPeriod = inputs[10].value;
 
             if (taskName === '' || team === '' || owner === '' || method === '' || isNaN(hoursBefore) || isNaN(hoursAfter) || hoursBefore <= 0 || hoursAfter < 0) {
                  showMessage('Invalid Input','Please fill in all fields with valid numbers.');
@@ -684,7 +697,7 @@
 
             try {
                 const docRef = doc(db, `/artifacts/${appId}/public/data/innovations`, docId);
-                await updateDoc(docRef, { taskName, taskType, description, team, owner, method, status, hoursBefore, hoursAfter, hoursPeriod });
+                await updateDoc(docRef, { taskName, taskType, description, team, owner, method, status, quarter, hoursBefore, hoursAfter, hoursPeriod });
             } catch (error) {
                 console.error("Error updating document: ", error);
                 showError("Update Error","Failed to save changes. Please try again.");
@@ -707,12 +720,13 @@
             cells[4].innerText = row.dataset.originalOwner;
             cells[5].innerText = row.dataset.originalMethod;
             cells[6].innerHTML = getStatusBadge(row.dataset.originalStatus);
-            cells[7].innerText = row.dataset.originalHoursBefore;
-            cells[8].innerText = row.dataset.originalHoursAfter;
-            cells[9].innerText = row.dataset.originalHoursPeriod;
-            cells[10].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
+            cells[7].innerText = row.dataset.originalQuarter;
+            cells[8].innerText = row.dataset.originalHoursBefore;
+            cells[9].innerText = row.dataset.originalHoursAfter;
+            cells[10].innerText = row.dataset.originalHoursPeriod;
+            cells[11].innerHTML = `<span class="text-green-600 font-semibold">${efficiency}%</span>`;
 
-            cells[11].innerHTML = `
+            cells[12].innerHTML = `
                 <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="window.app.editRow(this)">Edit</button>
                 <button class="text-red-600 hover:text-red-900" onclick="window.app.deleteRow(this)">Delete</button>
             `;
@@ -895,7 +909,7 @@
         function showError(title, message) {
             showMessage(title, message);
             updateDashboard([], true); // Reset metrics on error
-            tableBody.innerHTML = `<tr><td colspan="12" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="13" class="text-center p-4 text-red-500 font-semibold">${message}</td></tr>`;
         }
 
         closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
